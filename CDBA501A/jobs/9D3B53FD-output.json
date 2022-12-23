@@ -1,0 +1,1 @@
+[1,"ERROR: YAMLException: duplicated mapping key (C:\\Users\\sandr\\Desktop\\sandra\\trabajo_BigData_equipo\\_quarto.yml, 30:9)\n29:         url: \"mailto:<arazola@alumni.uv.es>\"\n30:         url: \"mailto:<alcape4@alumni.uv.es>\"\n           ~~\n31:   page-footer:\n"]

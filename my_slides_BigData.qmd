@@ -1,0 +1,760 @@
+---
+title: "Incertidumbre por la escalada de precios"  #- título
+date: 2022-12-23             #- ISO8601 YYYY-MM-DD format 
+date-format: short
+format: 
+  revealjs:
+    scrollable: true
+    slide-level: 2
+    height: 900
+    width: 1600
+    toc: false
+    center-title-slide: true
+    title-slide-attributes: #- atributos para la slide de titulo
+      data-background-color: "#008B8B"   #- color de R-ladies
+    preview-links: auto  #- true: abre un iframe en lugar de abrir ventana
+    link-external-newwindow: true
+    transition: fade
+    fontcolor: "#000000"
+    highlight-style: a11y
+    code-line-numbers: true
+    number-sections: false
+    slide-number: c/t  
+    incremental: false   
+footer: |
+  Slides hechas con [Quarto](https://quarto.org/) 
+#theme: moon
+---
+
+
+
+## Introducción {background-color="#FAEBD7"}
+  
+  En el siguiente trabajo vamos a desarrollar cómo durante este último año, las circunstancias han hecho que el mundo esté entrando en una espiral inflacionista que puede acabar sacudiendo la economía global. 
+
+
+:::{.panel-tabset}
+
+### Introducción
+Para nuestro trabajo de Big Data hemos decidido hablar como bien indica el título de la incertidumbre que se está viviendo actualmente en la economía mundial con la evolución de los precios y dar una posible previsión para años posteriores.
+
+Empezamos comentando el contexto actual que está viviendo el planeta con dos gráficos: la evolución del PIB mundial y la evolución del IPC de varias economías mundiales, para poder mostrar los efectos que se están dando en la economía global.
+
+Una vez puestos en contexto, pasamos a centrarnos más en Europa y España, mostrando un gráfico de tasas de inflación en Europa, explicando los factores determinantes de esta subida de precios y las consecuencias que están teniendo.. Después, nos centramos algo más en España, viendo los componentes más importantes que han influido al aumento del IPC, así como las diferencias con Europa.
+
+Para terminar, mencionamos los sectores más importantes en la economía global: alimentos y energía, y la evolución que ha tenido tanto en España como en el mundo. Por último, analizamos cuales pueden ser las previsiones futuras dadas todas estas evoluciones de los últimos meses.
+
+### Librerias
+Primeramente, cargamos las siguientes librerias para que se pueda reproducir nuestro trabajo:
+```{r}
+
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(dygraphs)
+library(treemap)
+library(DT)
+library(ggplot2)
+library(gt)
+library(rmdformats)
+library(sf)
+library(ggplot2)
+library(lubridate)
+library(transformr)
+library(gganimate)
+
+
+```
+
+### Datos
+
+Por otro lado, los datos que vamos a utilizar están alojados en las siguientes páginas:
+  
+![](https://www.ine.es/revista2020/imagenes/logoINE.png)
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Eurostat_Newlogo.png/640px-Eurostat_Newlogo.png)
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/OECD_logo.svg/2560px-OECD_logo.svg.png)
+![](https://1000marcas.net/wp-content/uploads/2020/07/logo-The-World-Bank.png)
+![](https://www.euro-mat.com/wp-content/uploads/2019/02/logo-Trading-economics.png)
+
+:::
+  
+  
+  
+---
+  
+## Contexto actual  {background-color="#FAEBD7"}
+  
+- Pandemia COVID-19
+- Invasión rusa a Ucrania
+
+Tras la aparente recuperación de la crisis de COVID-19, podemos observar en el gráfico como hay un repunte muy alto en el crecimiento del PIB mundial que debería de ser mayor si no fuera por la guerra de Ucrania. 
+
+:::{.panel-tabset}
+
+
+### PIB mundial
+
+```{r}
+#| echo: false
+prevision <- read_excel("./Datos/prevision.xlsx")
+prevision <- prevision %>% select(-Periodo)
+
+names(prevision) = c("Año", "% Variación")
+
+
+
+
+presAnnotation <- function(dygraph, x, text) {
+  dygraph %>%
+    dyAnnotation(x, text, attachAtBottom = TRUE, width = 60)
+}
+
+dygraph(prevision, main = "VARIACIÓN PORCENTUAL INTERANUAL DEL PIB MUNDIAL",
+        ylab = "% VARIACIÓN")  %>% 
+  dyOptions(pointShape = "plus", pointSize = 100,  colors = "#5F9EA0", stackedGraph = TRUE) %>%
+  dyLegend(show = "follow") %>%
+  presAnnotation("2020", text = "GUERRA") %>% 
+  dyShading(from = "2019", to = "2024")
+
+```
+
+### Código
+```{r}
+# prevision <- prevision %>% select(-Periodo)
+
+# names(prevision) = c("Año", "% Variación")
+
+
+
+
+# presAnnotation <- function(dygraph, x, text) {
+#  dygraph %>%
+#    dyAnnotation(x, text, attachAtBottom = TRUE, width = 60)
+# }
+
+# dygraph(prevision, main = "VARIACIÓN PORCENTUAL INTERANUAL DEL PIB MUNDIAL",
+#        ylab = "% VARIACIÓN")  %>% 
+#  dyOptions(pointShape = "plus", pointSize = 100,  colors = "#5F9EA0", stackedGraph = TRUE) %>%
+#  dyLegend(show = "follow") %>%
+#  presAnnotation("2020", text = "GUERRA") %>% 
+#  dyShading(from = "2019", to = "2024")
+
+```
+
+### IPC mundial
+```{r}
+#| echo: false
+IPC <- read.csv("./Datos/IPCmundiaal.csv")
+
+
+IPC2 <- IPC %>% filter(Frequency == "Monthly") %>%
+  filter(Measure == "Index") %>%
+  filter(Subject == "CPI: 01-12 - All items")
+
+IPC2 <- IPC2 %>% select(-SUBJECT, -Subject, -MEASURE, -Measure, -FREQUENCY, -Frequency, -Unit.Code, -Unit, -PowerCode.Code)
+
+IPC2 <- IPC2 %>% select(-Flag.Codes, -Flags)
+
+
+IPC2 <- IPC2 %>% filter(LOCATION %in% c("CAN", "ESP", "FRA", "DEU", "JPN", "ISR", "GBR", "USA", "RUS", "KOR", "CHL", "RUS"))
+
+IPC2 <- IPC2 %>% mutate(time = lubridate::my(Time))
+
+p2 <- ggplot(IPC2, aes(x = time, y = Value, color = Country, group = 
+                         Country)) +
+  geom_line(size = 2) +
+  labs(title = "Tasas de inflación del IPC (2015-2022)",
+       subtitle = "(Año base: 2015 = 100)",
+       caption = "Fuente: OCDE",
+       x = "Año",
+       y = "Inflación IPC") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+p2
+
+```
+
+### Código
+
+```{r}
+
+
+# IPC2 <- IPC %>% filter(Frequency == "Monthly") %>%
+# filter(Measure == "Index") %>%
+# filter(Subject == "CPI: 01-12 - All items")
+
+# IPC2 <- IPC2 %>% select(-SUBJECT, -Subject, -MEASURE, -Measure, -FREQUENCY, -Frequency, -Unit.Code, -Unit, -PowerCode.Code)
+
+# IPC2 <- IPC2 %>% select(-Flag.Codes, -Flags)
+
+
+# IPC2 <- IPC2 %>% filter(LOCATION %in% c("CAN", "ESP", "FRA", "DEU", "JPN", "ISR", "GBR", "USA", "RUS", "KOR", "CHL", "RUS"))
+
+# IPC2 <- IPC2 %>% mutate(time = lubridate::my(Time))
+
+# p2 <- ggplot(IPC2, aes(x = time, y = Value, color = Country, group = Country)) + geom_line(size = 2) + labs(title = "Tasas de inflación del IPC (2015-2022)", subtitle = "(Año base: 2015 = 100)", caption = "Fuente: OCDE", x = "Año", y = "Inflación IPC") + theme_minimal() + theme(legend.position = "right")
+
+```
+:::
+  
+  
+  
+---
+  
+## Inflación Europa  {background-color="#FAEBD7"}
+  
+  En diciembre de 2021 alcanzó el 5%. Además la inflación observada sorprendió varias veces al alza. Se esperaba que los factores que impulsaron el incremento de la inflación en 2021 desaparecieran en gran parte y disminuyera en 2022 pero la invasión rusa a Ucrania acentuó el aumento.
+
+
+:::{.panel-tabset}
+
+### Gráfico
+
+En el diagrama de barras se observa la evolución de las tasas de inflación en la Unión Europea.
+```{r}
+#| echo: false
+GRAFICO_INFLACION_ <- read_excel("./Datos/GRAFICOINFLACION.xlsx")
+names(GRAFICO_INFLACION_) <- c("Paises", "Variacion_anual")
+
+
+grafico_inflacion <- ggplot(GRAFICO_INFLACION_, aes(x=Variacion_anual, y=Paises)) +  geom_bar(stat = "identity") + ggtitle("Evolución tasas de inflación en la UE") + labs(caption = "Fuente: Eurostat", x = "Variación anual", y = "Países") + theme(plot.subtitle = element_text(family = "sans"), plot.caption = element_text(family = "sans"), axis.title = element_text(family = "sans"), plot.title = element_text(family = "sans"), panel.background = element_rect(fill = "#FFDEAD"), plot.background = element_rect(fill = "#FA8072"))
+
+grafico_inflacion
+
+```
+
+
+### Código
+
+```{r}
+# GRAFICO_INFLACION_ <- read_excel("./Datos/GRAFICOINFLACION.xlsx")
+# names(GRAFICO_INFLACION_) <- c("Paises", "Variacion_anual")
+
+
+# grafico_inflacion <- ggplot(GRAFICO_INFLACION_, aes(x=Variacion_anual, y=Paises)) +  geom_bar(stat = "identity") + ggtitle("Evolución tasas de inflación en la UE") + labs(caption = "Fuente: Eurostat", x = "Variación anual", y = "Países") + theme(plot.subtitle = element_text(family = "sans"), plot.caption = element_text(family = "sans"), axis.title = element_text(family = "sans"), plot.title = element_text(family = "sans"), panel.background = element_rect(fill = "#FFDEAD"), plot.background = element_rect(fill = "#FA8072"))
+
+# grafico_inflacion
+```
+
+
+
+:::
+---
+  
+## Países con más inflación en Europa actualmente  {background-color="#FAEBD7"}
+  
+:::{.panel-tabset}
+
+### Top 3
+
+**1º País con más inflación**
+  
+```{r}
+#| echo: false
+
+masinfla <- read_excel("./Datos/Libro1.xlsx")
+names(masinfla) = c("País", "% Inflación")
+
+masinfla2 <- masinfla %>% filter(País %in% c("Turquia")) 
+
+
+
+Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/tr.png"
+
+masinfla2 <- masinfla2 %>% add_column(Bandera)
+
+Tabla <- masinfla2 %>% gt()
+
+Tabla <- Tabla %>%
+  tab_header(title = md("**1º PAÍS CON MÁS INFLACIÓN**"))
+
+Tabla <- Tabla %>%
+  tab_options(heading.background.color = "#A52A2A") %>% tab_options(heading.title.font.size = 15,  column_labels.font.weight =  "bold")
+
+
+Tabla <- Tabla  %>%
+  gt::text_transform(locations = cells_body(columns = c(Bandera)), fn = function(x) {gt::web_image(x, height = 50)}) %>%  cols_align(
+    align = "center")
+
+Tabla
+```
+
+**2º País con más inflación**
+  
+```{r}
+#| echo: false
+masinfla3 <- masinfla %>% filter(País %in% c("Moldavia")) 
+
+
+Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/md.png"
+
+masinfla3 <- masinfla3 %>% add_column(Bandera)
+
+Tabla2 <- masinfla3 %>% gt()
+
+Tabla2 <- Tabla2 %>%
+  tab_header(title = md("**2º PAÍS CON MÁS INFLACIÓN**"))
+
+Tabla2 <- Tabla2 %>%
+  tab_options(heading.background.color = "#FFD700") %>% tab_options(heading.title.font.size = 15,  column_labels.font.weight =  "bold")
+
+
+Tabla2 <- Tabla2  %>%
+  gt::text_transform(locations = cells_body(columns = c(Bandera)), fn = function(x) {gt::web_image(x, height = 50)}) %>%  cols_align(
+    align = "center")
+
+Tabla2
+```
+
+**3º País con más inflación**
+  
+```{r}
+#| echo: false
+masinfla4 <- masinfla %>% filter(País %in% c("Ucrania")) 
+
+
+Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/ua.png"
+
+masinfla4 <- masinfla4 %>% add_column(Bandera)
+
+Tabla3 <- masinfla4 %>% gt()
+
+Tabla3 <- Tabla3 %>%
+  tab_header(title = md("**3º PAÍS CON MÁS INFLACIÓN**"))
+
+Tabla3 <- Tabla3 %>%
+  tab_options(heading.background.color = "#008B8B") %>% tab_options(heading.title.font.size = 15,  column_labels.font.weight =  "bold")
+
+
+Tabla3 <- Tabla3  %>%
+  gt::text_transform(locations = cells_body(columns = c(Bandera)), fn = function(x) {gt::web_image(x, height = 50)}) %>%  cols_align(
+    align = "center")
+
+Tabla3
+```
+
+### Explicación
+
+**Turquía**: La inflación por la subida de precios de las materias primas y las energías, aumento del coste de transporte…, sumado a una política de reducciones de tipo de interés llevada a cabo por el presidente de Turquía ha hecho que haya una continua espiral inflacionista dando lugar a una hiperinflación.  <br>
+  
+  
+  **Moldavia**: Debido a la crisis constitucional que se lleva viviendo en el país desde 2019, sumado a una crisis en el sector industrial del país, ha hecho que deban de importar la mayoría de sus productos y, a la vez que esto, se ha depreciado su moneda en un 8,3% por lo que cada vez es más caro importar y por tanto el precio final es todavía mayor.  <br>
+  
+  
+  **Ucrania**: En los últimos años, la economía del país se ha vuelto más vulnerable y dependiente de factores externos, sumado a la invasión de Rusia, ha hecho que la inflación se dispare debido a la escasez de los productos básicos y energías.  
+
+### Código
+
+```{r}
+#Cargamos la tabla
+
+# masinfla <- read_excel("./Datos/Libro1.xlsx")
+# names(masinfla) = c("País", "% Inflación")
+
+#Turquía
+
+# masinfla2 <- masinfla %>% filter(País %in% c("Turquia")) 
+
+# Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/tr.png"
+
+# masinfla2 <- masinfla2 %>% add_column(Bandera)
+
+# Tabla <- masinfla2 %>% gt()
+
+# Tabla <- Tabla %>%
+#  tab_header(title = md("**1º PAÍS CON MÁS INFLACIÓN**"))
+
+# Tabla <- Tabla %>%
+#  tab_options(heading.background.color = "#A52A2A") %>% tab_options(heading.title.font.size = 15,  column_labels.font.weight =  "bold")
+
+
+#Tabla <- Tabla  %>%
+#  gt::text_transform(locations = cells_body(columns = c(Bandera)), fn = function(x) {gt::web_image(x, height = 50)}) %>%  cols_align(
+#    align = "center")
+
+
+#Moldavia
+
+# masinfla3 <- masinfla %>% filter(País %in% c("Moldavia")) 
+# Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/md.png"
+#el resto de código es igual que el anterior solo cambiando el nombre de la Tabla a Tabla2
+
+
+#Ucrania
+
+# masinfla4 <- masinfla %>% filter(País %in% c("Ucrania")) 
+#Bandera <- "https://www.banderas-mundo.es/data/flags/emoji/apple/160x160/ua.png"
+#el resto de código es igual que el anterior solo cambiando el nombre de la Tabla a Tabla3
+
+```
+
+:::
+  
+---
+  
+  
+## Factores determinantes de la inflación  {background-color="#FAEBD7"}
+  
+:::{.panel-tabset}
+
+### Factores
+
+Los tres factores interrelacionados que han provocado la actual situación son: el enfrentamiento a perturbaciones recurrentes, que estas perturbaciones están traslandándose con más fuerza a la inflación y, que están resultando ser persistentes debido a cambios estructurales en la economía.
+
+1.  En primer lugar la economía de la zona del euro se ha visto afectada por una serie de perturbaciones sin precedentes, tanto por el lado de la demanda como de la oferta, lo que ha restringido la oferta agregada.
+
+2.  En segundo lugar estas perturbaciones se están trasmitiendo de manera rápida e intensa a los precios. 
+
+3.  El tercer factor que agrava esta situación son los cambios estructurales en la economía. Las perturbaciones provocadas por la pandemia y la guerra han creado un nuevo mapa mundial de las relaciones económicas.
+
+### Puntos de inflexión
+
+-   La interrupción del suministro de gas causada por la invasión rusa. Las curvas de los mercados futuros apuntan a que los precios del gas continuaran subiendo durante algún tiempo, ya que los países europeos deberán pagar una prima para atraer gas natural licuado no contratado en sustitución del gas ruso. Asimismo, los efectos de sustitución encarecerán probablemente los precios de otras fuentes de energía. A mas largo plazo, tambien es probable que la guerra acelere la transición verde en Europa, incluido el cambio a las energías renovables, lo que en última instancia debería dar lugar a un descenso de los precios de la electricidad.
+
+-   En segundo lugar, observamos cambios en la naturaleza de la globalización y, en particular, el papel de China. Las disrupciones de oferta provocadas por la pandemia, las vulnerabilidades que ha puesto de manifiesto y el nuevo panorama geopolítico parecen conducir a una reevaluación de las cadenas globales de valor.
+
+:::
+  
+---
+  
+## Diferencias entre Europa y España  {background-color="#FAEBD7"}
+  
+  La inflación anual se está disparando en Europa. En octubre, la tasa del índice de precios de consumo (IPC) en la Europa era de media un 11,5% superior a la de hace un año, según los datos de Eurostat. Desde el 5,6% que se registró en enero, este valor ha ido aumentando mes a mes.
+
+:::{.panel-tabset}
+
+### España
+
+A diferencia del resto de países de Europa, en España la tendencia de la inflación es diferente. Mientras que la inflación anual en nuestro país ha sido superior a la media de la UE en 7 de los primeros ocho meses del año, todos menos mayo. Sin embargo, en los últimos dos meses este dato ha sido muy inferior a la media. Así, en octubre, la inflación en nuestro país se situó cuatro puntos por debajo de la media comunitaria.
+
+### Gráfico
+```{r}
+#| echo: false
+
+grafico_ipc_2_ <- read_excel("./Datos/graficoipcue.xlsx")
+
+
+names(grafico_ipc_2_) = c("Periodo", "España", "Unión Europea")
+
+dygraph(grafico_ipc_2_, main = "Evolución del IPC 2022") %>% 
+  dyAxis("x", label = "Meses") %>% 
+  dyAxis("y", label = "Variación IPC")
+
+
+grafico_ipc_2_
+
+#Los datos del eje X corresponden a los meses del año.
+
+```
+
+### Código
+```{r}
+# grafico_ipc_2_ <- read_excel("./Datos/graficoipcue.xlsx")
+
+
+# names(grafico_ipc_2_) = c("Periodo", "España", "Unión Europea")
+
+# dygraph(grafico_ipc_2_, main = "Evolución del IPC 2022") %>% 
+#  dyAxis("x", label = "Meses") %>% 
+#  dyAxis("y", label = "Variación IPC")
+
+
+# grafico_ipc_2_
+```
+:::
+  
+  
+---
+  
+## Consecuencias  {background-color="#FAEBD7"}
+  
+-   **Pérdida de poder adquisitivo**
+-   **Salarios reales menores**
+-   **La clase baja y la clase media de la población son las más afectadas**. Las familias se encuentran en un momento de profundo malestar económico.
+-  **Aumento del coste de financiación para empresas y familias**
+
+:::{.panel-tabset}
+
+### Además...
+
+-   Otra consecuencia ha sido respecto al **PIB interanual que ha sufrido un severo frenazo de tres puntos, pasando de una tasa interanual** del 6,8% a un 3,8%, según el dato adelantado por el INE. En términos trimestrales, la actividad ha pasado de crecer un 1,5% en el segundo trimestre a apenas un 0,2% en el tercero.
+
+![](1.png)
+
+:::
+
+---
+
+## Sectores  {background-color="#FAEBD7"}
+  La inflación mundial ha provocado que todos los sectores, en mayor o menor medida, hayan debido de aumentar sus costes y por tanto los precios finales que llegan al consumidor. Los sectores que consideramos más importantes para la economía global son el de los alimentos y el de la energía, que comentaremos con más profundidad más adelante.
+
+:::{.panel-tabset}
+
+### España
+Centrándonos ahora en España, tenemos la siguiente tabla que nos muestra cómo ha repercutido cada sector en el que se divide el IPC general en este año: 
+  
+```{r}
+#| echo: false
+
+sectorcontri <- read.csv("./Datos/2022a.csv")
+names(sectorcontri) = c("Sector", "Inflacion", "Mes")
+
+a3 <- treemap(sectorcontri,
+              index="Sector",
+              vSize="Inflacion",
+              type="index",
+              title="Contribución al aumento del IPC en 2022",
+              palette="Set2")
+
+a3
+
+
+```
+Como vemos, los tres sectores que más le han afectado en comparación al año anterior esta subida de precios ha sido al de la alimentación, transporte y menaje.
+:::
+---
+  
+## Sector alimentario  {background-color="#FAEBD7"}
+  
+  En octubre de 2022 los alimentos tuvieron un fuerte incremento del 15,4%  en términos interanuales, una tasa seis decimas superior a la del mes anterior y la mas alta desde el comienzo de la serie estadística para este grupo en enero de 1994. El banco mundial asegura que, desagregándo la subida de la inflación general, el precio de la alimentación ha crecido un 2,7% en términos reales.
+
+**Destacan el encarecimiento en comparación anual de las legumbres y hortalizas (17,9%), la leche (25,3%), el queso (16,1%), los huevos (23,6%), y la carne (ave 18,1%, vacuno 14,7% y porcino 11,2%)**. Como podemos ver, corresponden a productos básicos de la cesta de la compra. La demanda de los alimentos no es flexible y los compradores a pesar de tratar de modificar sus dietas o hábitos de consumo para hacer frente al aumento de los costes, no pueden prescindir de estos productos de primera necesidad.
+
+:::{.panel-tabset}
+
+
+### Evolución mundial
+
+```{r}
+#| echo: false
+IPCALI <- IPC %>% filter(Frequency == "Monthly") %>%
+  filter(Measure == "Index") %>%
+  filter(Subject == "CPI: 01 - Food and non-Alcoholic beverages")
+
+
+IPCALI <- IPCALI %>% select(-SUBJECT, -Subject, -MEASURE, -Measure, -FREQUENCY, -Frequency, -Unit.Code, -Unit, -PowerCode.Code)
+
+IPCALI <- IPCALI %>% select(-PowerCode, -Reference.Period.Code, -Reference.Period)
+
+
+IPCALI <- IPCALI %>% filter(LOCATION %in% c("CAN", "ESP", "FRA", "DEU", "JPN", "ISR", "GBR", "USA", "RUS", "KOR", "CHL", "RUS"))
+
+IPCALI <- IPCALI %>% mutate(time = lubridate::my(Time))
+
+
+
+
+p44 <- ggplot(IPCALI) + 
+  geom_line(aes(x = time, y = Value)) +
+  facet_wrap(vars(Country)) + 
+  labs(title = "Evolución del precio de lOS alimentos y bebidas no alcohólicas (2015-2022)",
+       subtitle = "por países",
+       caption = "Fuente: OCDE",
+       x = "Fecha",
+       y = "Variación del precio de la energía")
+
+
+p44
+
+```
+:::
+  
+---
+  
+## Sector energético  {background-color="#FAEBD7"}
+  
+  La energía, el motor principal de cualquier economía, ha tenido un aumento muy considerable de precio en estos últimos meses debido al estallido del conflicto en Ucrania ha vuelto a poner patas arriba el mercado energético y la tendencia del precio de la energía. Mientras, vivimos con la incertidumbre de si Rusia puede cortar el grifo del gas en Europa. El problema reside en la duración del conflicto en Ucrania y la clara dependencia energética que existe. Dependiendo del tiempo en el que duren las amenazas, la tendencia en los precios de la energía variará de una forma u otra. Sin embargo, parece que poco a poco estas tasas de inflación están disminuyendo, es decir, siguen aumentando los precios pero más lentamente (por ahora).
+
+:::{.panel-tabset}
+
+### Precio de la energía
+
+```{r}
+#| echo: false
+
+precios <- read_excel("./Datos/Libro2.xlsx")
+
+
+precios <- precios %>% 
+  
+  mutate(Valor =  case_when(
+    
+    Energia == "Petroleo Brent"   ~ "Precio: 79.85$/B",
+    
+    Energia == "Petroleo Crudo"  ~ "Precio: 75,91$/B",
+    
+    Energia == "Carbon" ~ " Precio 401,35€/T",
+    
+    Energia == "Gas natural" ~ "Precio 5,35/MMBtu ",
+    
+    Energia == "Electricidad (€/kWh)" ~ "Precio: 0.17€/kWh")) 
+
+
+pp1 <- ggplot(precios, aes(x = Energia, y = Variacion)) + geom_bar(stat = "identity" , fill = "#87CEEB") +
+  
+  geom_text(aes(label = Valor), vjust = 1) +
+  
+  labs(title = "Tasa de variación entre 2021 y 2022 del precio de las principales energías",
+       
+       x = "Tipo de energía",
+       
+       y = "Tasa de variación",
+       
+       caption = "Fuente: Trading Economics")
+
+
+pp1
+
+```
+
+Como vemos, el **carbón** es la materia prima que más ha variado su precio (más de un 140%), debido a que tras la crisis energética muchos países han vuelto a utilizar carbón para poder seguir produciendo energía a un coste bajo. 
+
+
+Por otro lado, entrado el invierno, se esperaba que el precio del **gas** se disparase al igual que lo lleva haciendo el de la electricidad. Sin embargo, a pesar de las continuas subidas de precios el precio del gas parece que no solo ha parado de aumentar, sino que está disminuyendo. 
+
+Por último, el **petróleo** y la **gasolina** podemos observar como también continúan disminuyendo. Sabemos que la oferta no ha aumentado, por tanto esta disminución de precio también se debe a una reducción de la demanda mundial por parte de los países importadores.
+
+
+### Datos mundiales 
+
+```{r}
+#| echo: false
+IPCENERGIA <- IPC %>% filter(Frequency == "Monthly") %>%
+  filter(Measure == "Index") %>%
+  filter(Subject == "CPI: Energy")
+
+
+IPCENERGIA <- IPCENERGIA %>% select(-SUBJECT, -Subject, -MEASURE, -Measure, -FREQUENCY, -Frequency, -Unit.Code, -Unit, -PowerCode.Code)
+
+IPCENERGIA <- IPCENERGIA %>% select(-PowerCode, -Reference.Period.Code, -Reference.Period)
+
+
+IPCENERGIA <- IPCENERGIA %>% filter(LOCATION %in% c("CAN", "ESP", "FRA", "DEU", "JPN", "ISR", "GBR", "USA", "RUS", "KOR", "CHL", "RUS"))
+
+IPCENERGIA <- IPCENERGIA %>% mutate(time = lubridate::my(Time))
+
+
+
+
+p4 <- ggplot(IPCENERGIA) +
+  geom_line(aes(x = time, y = Value)) +
+  facet_wrap(vars(Country)) +
+  labs(title = "Evolución del precio de la energía (2015-2022)",
+       subtitle = "por países",
+       caption = "Fuente: OCDE",
+       x = "Fecha",
+       y = "Variación del precio de la energía")
+
+p4
+
+
+
+IPCENERGIADT <- IPC %>% filter(Frequency == "Monthly") %>%
+  filter(Measure == "Index") %>%
+  filter(Subject == "CPI: Energy")
+
+
+IPCENERGIADT <- IPCENERGIADT %>% select(-SUBJECT, -Subject, -MEASURE, -Measure, -FREQUENCY, -Frequency, -Unit.Code, -Unit, -PowerCode.Code)
+
+IPCENERGIADT <- IPCENERGIADT %>% select(-PowerCode, -Reference.Period.Code, -Reference.Period)
+
+IPCENERGIADT <- IPCENERGIADT %>% select(-Flag.Codes, -Flags)
+
+IPCENERGIADT <- IPCENERGIADT %>% select(-LOCATION, -TIME)
+names(IPCENERGIADT) = c("País", "Fecha (Período de 2015 a 2020)", "Inflación de la energía (base 2015 = 100)")
+
+datatable(IPCENERGIADT)
+
+```
+
+### España
+```{r}
+#| echo: false
+energiaCCAA <- read_excel("./Datos/energia.xlsx")
+
+energiaCCAA <- energiaCCAA %>%
+  mutate(time = lubridate::ym(Periodo)) %>%
+  mutate(year = lubridate::year(time)) %>%
+  mutate(mes = lubridate::month(time))
+
+
+energiaCCAA <- energiaCCAA %>% select(-`Grupos ECOICOP`, -`Tipo de dato`)
+
+names(energiaCCAA) = c("Comunidades", "Periodo", "Variacion_IPC", "Fecha", "Año", "Mes")
+
+
+p8 <- ggplot(energiaCCAA) + 
+  geom_line(aes(x = Fecha, y = Variacion_IPC, color = Comunidades, group = Comunidades)) + 
+  labs(title = "Evolución del precio de la energía (2015-2022)",
+       subtitle = "por comunidades",
+       caption = "Fuente: INE",
+       x = "Fecha",
+       y = "Variación del precio de la energía") +
+  theme_minimal() 
+
+p8
+
+energiaCCAA2 <- read_excel("./Datos/ccaaaño.xlsx")
+energiaCCAA2 <- energiaCCAA2[, -2]
+
+
+
+energiaCCAA2 <- energiaCCAA2 %>%
+  mutate(time = lubridate::ym(Periodo)) %>%
+  mutate(year = lubridate::year(time)) %>%
+  mutate(mes = lubridate::month(time))
+
+
+
+names(energiaCCAA2) = c("Comunidades y Ciudades Autónomas", "Periodo", "Variacion_IPC", "Fecha", "Año", "Mes")
+
+
+p9 <- ggplot(energiaCCAA2, aes(x = Fecha, y = Variacion_IPC, color = `Comunidades y Ciudades Autónomas`, group = `Comunidades y Ciudades Autónomas`)) + 
+  geom_line(size = 1.5) +
+  labs(title = "Evolución del precio de la energía (enero a noviembre de 2022)",
+       subtitle = "(las tres comunidades con mayor inflación y las tres comunidades con menos inflación)",
+       caption = "Fuente: INE",
+       x = "Fecha",
+       y = "Variación del precio de la energía") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+p9
+
+```
+:::
+
+---
+
+## Previsiones  {background-color="#FAEBD7"}
+
+En conclusión la economia se enfrenta a grandes desafios. En las nuevas Perspectivas Económicas de la OCDE, **se pronostica que el crecimiento mundial disminuirá a 2.2% en 2023 y se recuperará a un relativamente modesto 2.7% en 2024**. Asia será el principal motor de crecimiento en 2023 y 2024, mientras que Europa, América del Norte y América del Sur experimentarán un crecimiento muy bajo debido a una brusca desaceleración.
+
+En cuanto a la inflación se prevé que aunque siga siendo elevada en 2023 se vaya moderando mediante el ya aplicado endurecimiento de la política monetaria y la desaceleración del crecimiento.
+
+
+
+---
+
+## Bibliografía  {background-color="#FAEBD7"}
+
+Banco Mundial – Desarrollo sostenible, resiliencia y crecimiento económico. (s. f.). World Bank. https://www.bancomundial.org/es/home
+
+
+INE - Instituto Nacional de Estadstica. (s. f.). INE. Instituto Nacional de Estadística. INE. https://www.ine.es/index.htm
+
+
+OECD data. (s. f.). theOECD. https://data.oecd.org/
+
+
+TRADING ECONOMICS | 20 million INDICATORS FROM 196 COUNTRIES. (s. f.). https://tradingeconomics.com/
+
+
+Data. (s. f.). Eurostat. https://ec.europa.eu/eurostat/web/main/data
+
+---
+
+## FINAL  {background-color="#FAEBD7"}
+
+![](https://tse2.mm.bing.net/th?id=OIP.bLZ2KLXFTMEwjogn2nke1AHaE7&pid=Api&P=0)

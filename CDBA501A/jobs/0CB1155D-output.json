@@ -1,0 +1,1 @@
+[1,"ERROR: YAMLException: bad indentation of a mapping entry (C:\\Users\\sandr\\Desktop\\sandra\\trabajo_BigData_equipo\\_quarto.yml, 32:46)\n31:       - icon: envelope\n32:         url: \"mailto:<arazola@alumni.uv.es>\" , \"mailto:<alcape4@alumni.uv.es\", \"mailto:<apinbar@alumni.uv.es\"#---\n                                                ~~\n33:   page-footer:\n"]
